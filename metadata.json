@@ -1,0 +1,5 @@
+{
+  "name": "AI eBook Creator",
+  "description": "An AI-powered application to generate, write, edit, and export ebooks. Features include AI outline generation, AI chapter writing, a Markdown editor with real-time preview, and export to PDF/DOCX formats.",
+  "requestFramePermissions": []
+}
