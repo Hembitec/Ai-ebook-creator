@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -51,17 +51,19 @@ const SortableChapterItem: React.FC<SortableChapterItemProps> = ({ chapter, isSe
         <li
             ref={setNodeRef}
             style={style}
-            onClick={() => onSelectChapter(chapter.id)}
-            className={`flex items-center p-2 rounded-md cursor-pointer transition-colors ${
+            className={`flex items-center p-2 rounded-md transition-colors ${
                 isSelected
                 ? 'bg-primary/10 text-primary font-semibold'
                 : 'hover:bg-slate-100'
             }`}
         >
-            <button {...attributes} {...listeners} className="cursor-grab touch-none">
+            <button {...attributes} {...listeners} className="cursor-grab touch-none p-1 -ml-1">
                 <GripVerticalIcon />
             </button>
-            <span className="flex-1 overflow-hidden ml-2">
+            <span 
+                className="flex-1 overflow-hidden ml-1 cursor-pointer"
+                onClick={() => onSelectChapter(chapter.id)}
+            >
                 <p className="font-medium truncate text-sm">{chapter.title || 'Untitled Chapter'}</p>
             </span>
         </li>
@@ -74,10 +76,20 @@ const ChapterList: React.FC<ChapterListProps> = ({
   onSelectChapter,
   onUpdateChapters,
 }) => {
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
     const sensors = useSensors(
-        useSensor(PointerSensor),
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 5,
+            },
+        }),
         useSensor(KeyboardSensor, {
-        coordinateGetter: sortableKeyboardCoordinates,
+            coordinateGetter: sortableKeyboardCoordinates,
         })
     );
 
@@ -91,6 +103,32 @@ const ChapterList: React.FC<ChapterListProps> = ({
         }
     };
 
+    // Render a static list on the server and initial client render to avoid hydration mismatches
+    // and to ensure DndContext is only rendered client-side.
+    const StaticChapterList = () => (
+        <ul className="space-y-1">
+          {chapters.map(chapter => (
+            <li
+              key={chapter.id}
+              onClick={() => onSelectChapter(chapter.id)}
+              className={`flex items-center p-2 rounded-md transition-colors cursor-pointer ${
+                selectedChapterId === chapter.id
+                  ? 'bg-primary/10 text-primary font-semibold'
+                  : 'hover:bg-slate-100'
+              }`}
+            >
+              <div className="p-1 -ml-1">
+                <GripVerticalIcon />
+              </div>
+              <span className="flex-1 overflow-hidden ml-1">
+                <p className="font-medium truncate text-sm">{chapter.title || 'Untitled Chapter'}</p>
+              </span>
+            </li>
+          ))}
+        </ul>
+      );
+
+
   return (
     <div className="h-full flex flex-col">
       <h2 className="text-xl font-bold mb-4 text-slate-800 px-2">Chapters</h2>
@@ -99,7 +137,7 @@ const ChapterList: React.FC<ChapterListProps> = ({
             <div className="text-center p-4">
                 <p className="text-sm text-slate-500">This book has no chapters yet.</p>
             </div>
-        ) : (
+        ) : !isMounted ? <StaticChapterList /> : (
             <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
